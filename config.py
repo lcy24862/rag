@@ -1,5 +1,5 @@
 CONFIG = {
-    "data_path": "data/textbook/机电系统故障诊断与维修案例教程.pdf",
+    "data_path": "data/textbook/",
     "chunk_size": 500,
     "chunk_overlap": 50,
     "embedding_model": "text2vec-base-chinese",
