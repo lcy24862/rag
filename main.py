@@ -18,8 +18,8 @@ def main():
     vector_store = create_vector_store(chunks, CONFIG["embedding_model"])
     
     # 4. 初始化RAG引擎
-    api_key = "sk-6151b5dae67941d8b5b17d323aae9fe6"
-    rag_engine = RAGEngine(vector_store, api_key, "https://api.deepseek.com")
+    api_key = "sk-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"
+    rag_engine = RAGEngine(vector_store, api_key, "https://platform.openai.com/account/api-keys")
     
     # 5. 启动问答系统
     print("欢迎使用RAG问答系统！输入'quit'退出。")

@@ -1,11 +1,15 @@
 # src/rag_engine.py
-from openai import OpenAI
+from langchain_openai import OpenAI
 from langchain.chains import RetrievalQA
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain.llms import OpenAI
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.llms import OpenAI
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+from langchain_huggingface import HuggingFaceEmbeddings
+
 
 class RAGEngine:
     def __init__(self, vector_store, api_key, base_url):
@@ -13,14 +17,24 @@ class RAGEngine:
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         
         # 创建检索器
-        self.retriever = self._similarity_search
+        self.retriever = vector_store.as_retriever()  # 修改这里
         
+        # 创建LLMChain
+        prompt = PromptTemplate(
+            input_variables=["context"],
+            template="请压缩以下内容，仅保留与问题相关的信息：{context}"
+        )
+        llm_chain = LLMChain(llm=self._get_llm(), prompt=prompt)
+
+        # 新写法
+        chain = prompt | llm_chain
+        result = chain.invoke({"context": "你的内容"})
+
         # 创建上下文压缩器
-        from langchain.retrievers.document_compressors import LLMChainExtractor
-        compressor = LLMChainExtractor(llm=self._get_llm())
+        compressor = LLMChainExtractor(llm_chain=llm_chain)
         self.compression_retriever = ContextualCompressionRetriever(
             base_compressor=compressor,
-            base_retriever=self.retriever
+            base_retriever=self.retriever  # 这里传递检索器对象
         )
     
     def _similarity_search(self, query, k=3):
@@ -77,10 +91,6 @@ class RAGEngine:
         return response.choices[0].message.content
     
     def get_answer_with_context(self, question, k=3):
-        """
-        获取问题的答案和使用的上下文
-        """
-        # 检索相关文档
         docs = self.vector_store.similarity_search(question, k=k)
         contexts = [doc.page_content for doc in docs]
         context_str = "\n\n".join([f"Document {i+1}:\n{c}" for i, c in enumerate(contexts)])
@@ -90,13 +100,5 @@ class RAGEngine:
 {context_str}
 
 问题：{question}"""
-        response = self.client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "你是一个有帮助的AI助手"},
-                {"role": "user", "content": prompt}
-            ],
-            stream=False,
-            temperature=0
-        )
-        return response.choices[0].message.content, contexts
+        answer = self.client.invoke(prompt)  # prompt 必须是字符串
+        return answer, contexts
