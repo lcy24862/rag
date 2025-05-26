@@ -5,20 +5,19 @@ from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.llms import OpenAI
 
 class RAGEngine:
-    def __init__(self, vector_store):
+    def __init__(self, vector_store, api_key, base_url):
         self.vector_store = vector_store
-        self.client = OpenAI(
-            api_key="sk-6151b5dae67941d8b5b17d323aae9fe6",
-            base_url="https://api.deepseek.com"
-        )
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
         
         # 创建检索器
         self.retriever = self._similarity_search
         
         # 创建上下文压缩器
-        compressor = LLMChainExtractor.from_llm(self._get_llm())
+        from langchain.retrievers.document_compressors import LLMChainExtractor
+        compressor = LLMChainExtractor(llm=self._get_llm())
         self.compression_retriever = ContextualCompressionRetriever(
             base_compressor=compressor,
             base_retriever=self.retriever
@@ -44,8 +43,8 @@ class RAGEngine:
         return docs
     
     def _get_llm(self):
-        """获取LLM实例"""
-        return self.client
+        # 确保返回的是 langchain.llms.OpenAI 类型
+        return OpenAI(model="text-davinci-003", temperature=0.7)
     
     def get_answer(self, question):
         """
@@ -77,15 +76,27 @@ class RAGEngine:
         
         return response.choices[0].message.content
     
-    def get_answer_with_context(self, question):
+    def get_answer_with_context(self, question, k=3):
         """
         获取问题的答案和使用的上下文
         """
         # 检索相关文档
-        docs = self.retriever(question, k=3)
+        docs = self.vector_store.similarity_search(question, k=k)
         contexts = [doc.page_content for doc in docs]
-        
-        # 获取答案
-        answer = self.get_answer(question)
-        
-        return answer, contexts
+        context_str = "\n\n".join([f"Document {i+1}:\n{c}" for i, c in enumerate(contexts)])
+        prompt = f"""请基于所提供的上下文回答问题。
+如果上下文中不包含答案，请回答‘对不起，您所提供的上下文中不包含回答问题的信息。’
+上下文：
+{context_str}
+
+问题：{question}"""
+        response = self.client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "你是一个有帮助的AI助手"},
+                {"role": "user", "content": prompt}
+            ],
+            stream=False,
+            temperature=0
+        )
+        return response.choices[0].message.content, contexts

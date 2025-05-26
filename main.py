@@ -1,27 +1,27 @@
 from src.data_loader import load_textbook
-from src.text_splitter import split_text
-from src.embedding import create_embeddings
+from src.text_splitter import split_documents
 from src.vector_store import create_vector_store
 from src.rag_engine import RAGEngine
 from config import CONFIG
+import os
+from dotenv import load_dotenv
 
 def main():
+    load_dotenv()
     # 1. 加载教材
-    text = load_textbook(CONFIG["data_path"])
+    documents = load_textbook(CONFIG["data_path"])
     
     # 2. 文本分割
-    chunks = split_text(text, CONFIG["chunk_size"], CONFIG["chunk_overlap"])
+    chunks = split_documents(documents, CONFIG["chunk_size"], CONFIG["chunk_overlap"])
     
-    # 3. 创建向量嵌入
-    embeddings = create_embeddings(chunks, CONFIG["embedding_model"])
+    # 3. 创建向量存储
+    vector_store = create_vector_store(chunks, CONFIG["embedding_model"])
     
-    # 4. 创建向量存储
-    vector_store = create_vector_store(embeddings, chunks)
+    # 4. 初始化RAG引擎
+    api_key = "sk-6151b5dae67941d8b5b17d323aae9fe6"
+    rag_engine = RAGEngine(vector_store, api_key, "https://api.deepseek.com")
     
-    # 5. 初始化RAG引擎
-    rag_engine = RAGEngine(vector_store)
-    
-    # 6. 启动问答系统
+    # 5. 启动问答系统
     print("欢迎使用RAG问答系统！输入'quit'退出。")
     while True:
         question = input("\n请输入您的问题：")

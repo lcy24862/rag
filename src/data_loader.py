@@ -1,17 +1,14 @@
-import PyPDF2
+from langchain_community.document_loaders import PyPDFLoader
 import os
 
 def load_textbook(pdf_path):
     """
-    加载PDF教材并提取文本内容
+    使用LangChain的PyPDFLoader加载PDF教材并提取文本内容
     """
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"找不到文件：{pdf_path}")
     
-    text = ""
-    with open(pdf_path, 'rb') as file:
-        pdf_reader = PyPDF2.PdfReader(file)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-    
-    return text
+    loader = PyPDFLoader(pdf_path)
+    # 支持同步加载
+    pages = loader.load()
+    return pages
