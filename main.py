@@ -22,12 +22,20 @@ def main():
     rag_engine = RAGEngine(vector_store)
     
     # 6. 启动问答系统
+    print("欢迎使用RAG问答系统！输入'quit'退出。")
     while True:
-        question = input("请输入您的问题（输入'quit'退出）：")
+        question = input("\n请输入您的问题：")
         if question.lower() == 'quit':
             break
-        answer = rag_engine.get_answer(question)
-        print(f"回答：{answer}")
+            
+        try:
+            answer, contexts = rag_engine.get_answer_with_context(question)
+            print("\n回答：", answer)
+            print("\n参考上下文：")
+            for i, context in enumerate(contexts, 1):
+                print(f"\n{i}. {context}")
+        except Exception as e:
+            print(f"发生错误：{str(e)}")
 
 if __name__ == "__main__":
     main()
