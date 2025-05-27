@@ -1,27 +1,36 @@
-from src.data_loader import load_textbook
-from src.text_splitter import split_documents
-from src.vector_store import create_vector_store
-from src.rag_engine import RAGEngine
 from config import CONFIG
-import os
+from src.rag_engine import RAGEngine
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
+import os
 
 def main():
     load_dotenv()
-    # 1. 加载教材
-    documents = load_textbook(CONFIG["data_path"])
     
-    # 2. 文本分割
-    chunks = split_documents(documents, CONFIG["chunk_size"], CONFIG["chunk_overlap"])
+    # 1. 加载向量存储（从 chroma_db 目录）
+    persist_directory = "chroma_db"  # 与 initialize.py 中的目录一致
+    if not os.path.exists(persist_directory):
+        print("错误：找不到向量存储目录。请先运行 initialize.py 进行系统初始化。")
+        return
     
-    # 3. 创建向量存储
-    vector_store = create_vector_store(chunks, CONFIG["embedding_model"])
+    print("加载向量存储...")
+    embeddings = HuggingFaceEmbeddings(model_name=CONFIG["embedding_model"])
+    vector_store = Chroma(
+        persist_directory=persist_directory,
+        embedding_function=embeddings,
+        collection_name="mechanical_rag"  # 与 initialize.py 中的名称一致
+    )
     
-    # 4. 初始化RAG引擎
-    api_key = "sk-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"
-    rag_engine = RAGEngine(vector_store, api_key, "https://platform.openai.com/account/api-keys")
+    # 2. 初始化RAG引擎
+    api_key = "sk-6151b5dae67941d8b5b17d323aae9fe6"  # 替换为有效API密钥
+    rag_engine = RAGEngine(
+        vector_store=vector_store,
+        openai_api_key=api_key,  # 关键修改：显式传递参数名
+        base_url="https://api.deepseek.com/v1"
+    )
     
-    # 5. 启动问答系统
+    # 3. 启动问答系统
     print("欢迎使用RAG问答系统！输入'quit'退出。")
     while True:
         question = input("\n请输入您的问题：")
