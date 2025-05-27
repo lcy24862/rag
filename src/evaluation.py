@@ -3,30 +3,28 @@ from ragas import evaluate
 from ragas.metrics import (
     faithfulness,
     answer_relevancy,
-    context_relevancy,
+    context_precision,
     context_recall,
-    context_precision
 )
 from datasets import Dataset
-import numpy as np
+from ragas import EvaluationDataset
 
 class RAGEvaluator:
     def __init__(self):
         self.metrics = [
             faithfulness,
             answer_relevancy,
-            context_relevancy,
+            context_precision,
             context_recall,
-            context_precision
         ]
     
     def prepare_dataset(self, 
                        questions: List[str],
                        ground_truths: List[str],
                        answers: List[str],
-                       contexts: List[List[str]]) -> Dataset:
+                       contexts: List[List[str]]) -> EvaluationDataset:
         """
-        准备评估数据集
+        准备评估数据集，兼容 Ragas 的 EvaluationDataset 格式
         
         Args:
             questions: 问题列表
@@ -34,26 +32,27 @@ class RAGEvaluator:
             answers: 系统生成的答案列表
             contexts: 检索到的上下文列表
         """
-        return Dataset.from_dict({
+        data = {
             "question": questions,
             "ground_truth": ground_truths,
             "answer": answers,
-            "contexts": contexts
-        })
+            "contexts": contexts,
+        }
+        return EvaluationDataset.from_dict(data)
     
-    def evaluate(self, dataset: Dataset) -> Dict[str, float]:
+    def evaluate(self, dataset: EvaluationDataset) -> Dict[str, float]:
         """
-        使用RAGAs评估RAG系统性能
+        使用 Ragas 评估 RAG 系统性能
         
         Args:
-            dataset: 包含问题、标准答案、系统答案和上下文的Dataset对象
+            dataset: 包含问题、标准答案、系统答案和上下文的 EvaluationDataset 对象
         
         Returns:
             包含各项指标得分的字典
         """
         result = evaluate(
-            dataset,
-            self.metrics
+            dataset=dataset,
+            metrics=self.metrics,
         )
         return result
     
@@ -63,7 +62,7 @@ class RAGEvaluator:
                       answers: List[str],
                       contexts: List[List[str]]) -> Dict[str, float]:
         """
-        批量评估RAG系统性能
+        批量评估 RAG 系统性能
         
         Args:
             questions: 问题列表
