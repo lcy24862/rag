@@ -23,11 +23,11 @@ def main():
     )
     
     # 2. 初始化RAG引擎
-    api_key = "sk-6151b5dae67941d8b5b17d323aae9fe6"  # 替换为有效API密钥
+    api_key = CONFIG["api_key"]  # 替换为有效API密钥
     rag_engine = RAGEngine(
         vector_store=vector_store,
         openai_api_key=api_key,  # 关键修改：显式传递参数名
-        base_url="https://api.deepseek.com/v1"
+        base_url=CONFIG["base_url"]
     )
     
     # 3. 启动问答系统
