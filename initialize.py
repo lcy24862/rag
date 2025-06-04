@@ -2,9 +2,6 @@ from src.data_loader import load_textbook
 from src.text_splitter import split_documents
 from src.vector_store import create_vector_store
 from config import CONFIG
-import pickle
-import os
-from PyPDF2 import PdfReader
 from langchain.schema import Document
 
 def initialize_rag():

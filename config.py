@@ -1,7 +1,7 @@
 CONFIG = {
     "data_path": "data/textbook/textbook.pdf",
-    "chunk_size": 1000,
-    "chunk_overlap": 600,
+    "chunk_size": 800,
+    "chunk_overlap": 500,
     "embedding_model": "./models/text2vec-base-chinese",
     "base_url": "https://api.deepseek.com/v1",
     "api_key": "sk-6151b5dae67941d8b5b17d323aae9fe6",
@@ -9,5 +9,6 @@ CONFIG = {
     "llm_model": "deepseek-chat",
     "temperature": 0.7,
     "top_k": 3,
-    "vector_store_path": "chroma_db"
+    "vector_store_path": "./chroma_db",
+    "zh_core_web_trf": "./models/zh_core_web_trf"
 }

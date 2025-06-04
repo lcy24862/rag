@@ -11,7 +11,7 @@ class RAGEngine:
         self.client = OpenAI(api_key=openai_api_key, base_url=base_url)
         self.retriever = vector_store.as_retriever()
     
-    def get_answer_with_context(self, question, k=1):
+    def get_answer_with_context(self, question, k=3):
         """获取答案及参考上下文"""
         docs = self.vector_store.similarity_search(question, k=k)
         contexts = [doc.page_content for doc in docs]

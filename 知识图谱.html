@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>轴类零件知识图谱</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #graph {
+            width: 100%;
+            height: 800px;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            background: radial-gradient(circle at center, #f8f9fa 0%, #e9ecef 100%);
+        }
+        
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .node:hover {
+            transform: scale(1.1);
+        }
+        
+        .node-main {
+            fill: #e74c3c;
+            stroke: #c0392b;
+            stroke-width: 3px;
+        }
+        
+        .node-category {
+            fill: #3498db;
+            stroke: #2980b9;
+            stroke-width: 2px;
+        }
+        
+        .node-subcategory {
+            fill: #2ecc71;
+            stroke: #27ae60;
+            stroke-width: 2px;
+        }
+        
+        .node-detail {
+            fill: #f39c12;
+            stroke: #e67e22;
+            stroke-width: 2px;
+        }
+        
+        .node-process {
+            fill: #9b59b6;
+            stroke: #8e44ad;
+            stroke-width: 2px;
+        }
+        
+        .link {
+            stroke: #95a5a6;
+            stroke-width: 2px;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+        
+        .link:hover {
+            stroke: #34495e;
+            stroke-width: 3px;
+            opacity: 1;
+        }
+        
+        .node-text {
+            font-size: 12px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            fill: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .control-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 8px 15px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>轴类零件知识图谱</h1>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #e74c3c; border-color: #c0392b;"></div>
+                <span>主要概念</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3498db; border-color: #2980b9;"></div>
+                <span>分类</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #2ecc71; border-color: #27ae60;"></div>
+                <span>子分类</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f39c12; border-color: #e67e22;"></div>
+                <span>详细信息</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #9b59b6; border-color: #8e44ad;"></div>
+                <span>工艺过程</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" onclick="restartSimulation()">重新布局</button>
+            <button class="control-btn" onclick="toggleAnimation()">暂停/继续</button>
+            <button class="control-btn" onclick="centerGraph()">居中显示</button>
+            <button class="control-btn" onclick="exportToPNG()">导出PNG图片</button>
+            <button class="control-btn" onclick="exportToSVG()">导出SVG图片</button>
+        </div>
+        
+        <div id="graph"></div>
+    </div>
+
+    <script>
+        // 知识图谱数据
+        const graphData = {
+            nodes: [
+                // 主要概念
+                { id: "轴类零件", type: "main", size: 35 },
+                
+                // 分类节点
+                { id: "轴的分类", type: "category", size: 25 },
+                { id: "结构组成", type: "category", size: 25 },
+                { id: "失效形式", type: "category", size: 25 },
+                { id: "性能要求", type: "category", size: 25 },
+                { id: "制造材料", type: "category", size: 25 },
+                { id: "拆卸维修", type: "category", size: 25 },
+                
+                // 轴的分类子节点
+                { id: "转轴", type: "subcategory", size: 20 },
+                { id: "心轴", type: "subcategory", size: 20 },
+                { id: "传动轴", type: "subcategory", size: 20 },
+                
+                // 结构组成子节点
+                { id: "轴头", type: "subcategory", size: 20 },
+                { id: "轴颈", type: "subcategory", size: 20 },
+                { id: "轴身", type: "subcategory", size: 20 },
+                
+                // 失效形式子节点
+                { id: "疲劳断裂", type: "subcategory", size: 20 },
+                { id: "塑性变形", type: "subcategory", size: 20 },
+                { id: "脆性断裂", type: "subcategory", size: 20 },
+                { id: "磨损", type: "subcategory", size: 20 },
+                { id: "变形振动", type: "subcategory", size: 20 },
+                
+                // 性能要求子节点
+                { id: "抗拉强度", type: "subcategory", size: 20 },
+                { id: "刚度", type: "subcategory", size: 20 },
+                { id: "冲击韧性", type: "subcategory", size: 20 },
+                { id: "疲劳强度", type: "subcategory", size: 20 },
+                { id: "切削加工性", type: "subcategory", size: 20 },
+                { id: "淬透性", type: "subcategory", size: 20 },
+                { id: "硬度耐磨性", type: "subcategory", size: 20 },
+                
+                // 制造材料子节点
+                { id: "低碳钢", type: "subcategory", size: 20 },
+                { id: "中碳钢", type: "subcategory", size: 20 },
+                { id: "合金钢", type: "subcategory", size: 20 },
+                
+                // 拆卸维修子节点
+                { id: "拆卸方法", type: "subcategory", size: 20 },
+                { id: "问题现象", type: "subcategory", size: 20 },
+                { id: "原因分析", type: "subcategory", size: 20 },
+                { id: "防治措施", type: "subcategory", size: 20 },
+                
+                // 详细信息节点
+                { id: "车床主轴", type: "detail", size: 16 },
+                { id: "带轮的轴", type: "detail", size: 16 },
+                { id: "火车轴轮", type: "detail", size: 16 },
+                { id: "自行车前轴", type: "detail", size: 16 },
+                { id: "汽车前轴", type: "detail", size: 16 },
+                { id: "车床光杠", type: "detail", size: 16 },
+                
+                { id: "与传动零件配合", type: "detail", size: 16 },
+                { id: "与联轴器配合", type: "detail", size: 16 },
+                { id: "与轴承配合", type: "detail", size: 16 },
+                { id: "连接部分", type: "detail", size: 16 },
+                
+                { id: "疲劳强度不足", type: "detail", size: 16 },
+                { id: "静强度不足", type: "detail", size: 16 },
+                { id: "超允许范围", type: "detail", size: 16 },
+                
+                { id: "锻造材料", type: "detail", size: 16 },
+                { id: "轧制材料", type: "detail", size: 16 },
+                
+                // 工艺过程节点
+                { id: "清洁环境", type: "process", size: 16 },
+                { id: "按图拆卸", type: "process", size: 16 },
+                { id: "做记号", type: "process", size: 16 },
+                { id: "妥善保管", type: "process", size: 16 },
+                { id: "加热拆卸", type: "process", size: 16 },
+                
+                { id: "配合精度降低", type: "process", size: 16 },
+                { id: "工作不符要求", type: "process", size: 16 },
+                { id: "零件损伤", type: "process", size: 16 },
+                { id: "性能下降", type: "process", size: 16 }
+            ],
+            links: [
+                // 主要连接
+                { source: "轴类零件", target: "轴的分类" },
+                { source: "轴类零件", target: "结构组成" },
+                { source: "轴类零件", target: "失效形式" },
+                { source: "轴类零件", target: "性能要求" },
+                { source: "轴类零件", target: "制造材料" },
+                { source: "轴类零件", target: "拆卸维修" },
+                
+                // 轴的分类连接
+                { source: "轴的分类", target: "转轴" },
+                { source: "轴的分类", target: "心轴" },
+                { source: "轴的分类", target: "传动轴" },
+                
+                { source: "转轴", target: "车床主轴" },
+                { source: "转轴", target: "带轮的轴" },
+                { source: "心轴", target: "火车轴轮" },
+                { source: "心轴", target: "自行车前轴" },
+                { source: "心轴", target: "汽车前轴" },
+                { source: "传动轴", target: "车床光杠" },
+                
+                // 结构组成连接
+                { source: "结构组成", target: "轴头" },
+                { source: "结构组成", target: "轴颈" },
+                { source: "结构组成", target: "轴身" },
+                
+                { source: "轴头", target: "与传动零件配合" },
+                { source: "轴头", target: "与联轴器配合" },
+                { source: "轴颈", target: "与轴承配合" },
+                { source: "轴身", target: "连接部分" },
+                
+                // 失效形式连接
+                { source: "失效形式", target: "疲劳断裂" },
+                { source: "失效形式", target: "塑性变形" },
+                { source: "失效形式", target: "脆性断裂" },
+                { source: "失效形式", target: "磨损" },
+                { source: "失效形式", target: "变形振动" },
+                
+                { source: "疲劳断裂", target: "疲劳强度不足" },
+                { source: "塑性变形", target: "静强度不足" },
+                { source: "脆性断裂", target: "静强度不足" },
+                { source: "变形振动", target: "超允许范围" },
+                
+                // 性能要求连接
+                { source: "性能要求", target: "抗拉强度" },
+                { source: "性能要求", target: "刚度" },
+                { source: "性能要求", target: "冲击韧性" },
+                { source: "性能要求", target: "疲劳强度" },
+                { source: "性能要求", target: "切削加工性" },
+                { source: "性能要求", target: "淬透性" },
+                { source: "性能要求", target: "硬度耐磨性" },
+                
+                // 制造材料连接
+                { source: "制造材料", target: "低碳钢" },
+                { source: "制造材料", target: "中碳钢" },
+                { source: "制造材料", target: "合金钢" },
+                
+                { source: "低碳钢", target: "锻造材料" },
+                { source: "中碳钢", target: "锻造材料" },
+                { source: "合金钢", target: "锻造材料" },
+                { source: "低碳钢", target: "轧制材料" },
+                { source: "中碳钢", target: "轧制材料" },
+                { source: "合金钢", target: "轧制材料" },
+                
+                // 拆卸维修连接
+                { source: "拆卸维修", target: "拆卸方法" },
+                { source: "拆卸维修", target: "问题现象" },
+                { source: "拆卸维修", target: "原因分析" },
+                { source: "拆卸维修", target: "防治措施" },
+                
+                { source: "问题现象", target: "配合精度降低" },
+                { source: "原因分析", target: "工作不符要求" },
+                { source: "原因分析", target: "零件损伤" },
+                { source: "配合精度降低", target: "性能下降" },
+                
+                { source: "防治措施", target: "清洁环境" },
+                { source: "防治措施", target: "按图拆卸" },
+                { source: "防治措施", target: "做记号" },
+                { source: "防治措施", target: "妥善保管" },
+                { source: "防治措施", target: "加热拆卸" }
+            ]
+        };
+
+        // 创建SVG
+        const width = document.getElementById('graph').clientWidth;
+        const height = 800;
+        
+        const svg = d3.select("#graph")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+            
+        // 创建缩放行为
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on("zoom", function(event) {
+                container.attr("transform", event.transform);
+            });
+            
+        svg.call(zoom);
+        
+        const container = svg.append("g");
+
+        // 创建力仿真
+        const simulation = d3.forceSimulation(graphData.nodes)
+            .force("link", d3.forceLink(graphData.links).id(d => d.id).distance(10))
+            .force("charge", d3.forceManyBody().strength(-50))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(d => d.size + 5));
+
+        // 创建连线
+        const link = container.append("g")
+            .selectAll("line")
+            .data(graphData.links)
+            .enter().append("line")
+            .attr("class", "link");
+
+        // 创建节点
+        const node = container.append("g")
+            .selectAll("g")
+            .data(graphData.nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        // 添加圆形
+        node.append("circle")
+            .attr("r", d => d.size)
+            .attr("class", d => `node-${d.type}`);
+
+        // 添加文本
+        node.append("text")
+            .text(d => d.id)
+            .attr("class", "node-text")
+            .style("font-size", d => `${Math.max(10, d.size * 0.5)}px`);
+
+        // 添加悬停效果
+        node.on("mouseover", function(event, d) {
+            d3.select(this).select("circle")
+                .transition()
+                .duration(200)
+                .attr("r", d.size * 1.2);
+                
+            // 高亮相关连线
+            link.style("stroke-opacity", l => 
+                l.source === d || l.target === d ? 1 : 0.3
+            );
+        })
+        .on("mouseout", function(event, d) {
+            d3.select(this).select("circle")
+                .transition()
+                .duration(200)
+                .attr("r", d.size);
+                
+            link.style("stroke-opacity", 0.7);
+        });
+
+        // 更新位置
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+
+        // 拖拽函数
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // 控制函数
+        function restartSimulation() {
+            simulation.alpha(1).restart();
+        }
+
+        let animationPaused = false;
+        function toggleAnimation() {
+            if (animationPaused) {
+                simulation.restart();
+                animationPaused = false;
+            } else {
+                simulation.stop();
+                animationPaused = true;
+            }
+        }
+
+        function centerGraph() {
+            const bounds = container.node().getBBox();
+            const parent = container.node().parentElement;
+            const fullWidth = parent.clientWidth || parent.parentNode.clientWidth;
+            const fullHeight = parent.clientHeight || parent.parentNode.clientHeight;
+
+            const widthRatio = fullWidth / bounds.width;
+            const heightRatio = fullHeight / bounds.height;
+            const scale = Math.min(widthRatio, heightRatio) * 0.8;
+
+            const translate = [
+                fullWidth / 2 - scale * (bounds.x + bounds.width / 2),
+                fullHeight / 2 - scale * (bounds.y + bounds.height / 2)
+            ];
+
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+        }
+
+        // 初始化时居中显示
+        setTimeout(centerGraph, 2000);
+
+        // 导出功能
+        function exportToPNG() {
+            // 创建一个临时canvas
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            // 设置canvas尺寸
+            canvas.width = width;
+            canvas.height = height;
+            
+            // 设置白色背景
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, width, height);
+            
+            // 获取SVG数据
+            const svgElement = svg.node();
+            const svgData = new XMLSerializer().serializeToString(svgElement);
+            
+            // 创建SVG blob
+            const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+            const svgUrl = URL.createObjectURL(svgBlob);
+            
+            // 创建图片对象
+            const img = new Image();
+            img.onload = function() {
+                // 在canvas上绘制图片
+                context.drawImage(img, 0, 0, width, height);
+                
+                // 创建下载链接
+                const link = document.createElement('a');
+                link.download = '轴类零件知识图谱.png';
+                link.href = canvas.toDataURL('image/png');
+                
+                // 触发下载
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // 清理URL对象
+                URL.revokeObjectURL(svgUrl);
+            };
+            
+            img.onerror = function() {
+                // 如果SVG转换失败，使用HTML2Canvas方法
+                exportWithHTML2Canvas();
+            };
+            
+            img.src = svgUrl;
+        }
+        
+        function exportWithHTML2Canvas() {
+            // 备用方法：使用截图的方式
+            const graphElement = document.getElementById('graph');
+            
+            // 创建一个临时的canvas来截图
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // 设置白色背景
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            
+            // 手动绘制图形元素
+            drawGraphToCanvas(ctx);
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            link.download = '轴类零件知识图谱.png';
+            link.href = canvas.toDataURL('image/png');
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        function drawGraphToCanvas(ctx) {
+            // 获取当前的变换矩阵
+            const transform = d3.zoomTransform(svg.node());
+            
+            ctx.save();
+            ctx.translate(transform.x, transform.y);
+            ctx.scale(transform.k, transform.k);
+            
+            // 绘制连线
+            ctx.strokeStyle = '#95a5a6';
+            ctx.lineWidth = 2;
+            
+            graphData.links.forEach(link => {
+                const source = graphData.nodes.find(n => n.id === link.source.id || n.id === link.source);
+                const target = graphData.nodes.find(n => n.id === link.target.id || n.id === link.target);
+                
+                if (source && target) {
+                    ctx.beginPath();
+                    ctx.moveTo(source.x || 0, source.y || 0);
+                    ctx.lineTo(target.x || 0, target.y || 0);
+                    ctx.stroke();
+                }
+            });
+            
+            // 绘制节点
+            graphData.nodes.forEach(node => {
+                if (!node.x || !node.y) return;
+                
+                // 设置节点颜色
+                let fillColor = '#e74c3c';
+                switch(node.type) {
+                    case 'main': fillColor = '#e74c3c'; break;
+                    case 'category': fillColor = '#3498db'; break;
+                    case 'subcategory': fillColor = '#2ecc71'; break;
+                    case 'detail': fillColor = '#f39c12'; break;
+                    case 'process': fillColor = '#9b59b6'; break;
+                }
+                
+                // 绘制圆形
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.size, 0, 2 * Math.PI);
+                ctx.fillStyle = fillColor;
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 绘制文本
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${Math.max(10, node.size * 0.5)}px Microsoft YaHei, Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(node.id, node.x, node.y);
+            });
+            
+            ctx.restore();
+        }
+        
+        function exportToSVG() {
+            // 获取SVG元素
+            const svgElement = svg.node();
+            
+            // 创建完整的SVG字符串，包含样式
+            const svgString = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <defs>
+        <style><![CDATA[
+            .node-main { fill: #e74c3c; stroke: #c0392b; stroke-width: 3px; }
+            .node-category { fill: #3498db; stroke: #2980b9; stroke-width: 2px; }
+            .node-subcategory { fill: #2ecc71; stroke: #27ae60; stroke-width: 2px; }
+            .node-detail { fill: #f39c12; stroke: #e67e22; stroke-width: 2px; }
+            .node-process { fill: #9b59b6; stroke: #8e44ad; stroke-width: 2px; }
+            .link { stroke: #95a5a6; stroke-width: 2px; opacity: 0.7; }
+            .node-text { font-family: 'Microsoft YaHei', Arial, sans-serif; font-weight: bold; text-anchor: middle; dominant-baseline: middle; fill: white; }
+        ]]></style>
+    </defs>
+    <rect width="100%" height="100%" fill="white"/>
+    ${svgElement.innerHTML}
+</svg>`;
+            
+            // 创建下载链接
+            const blob = new Blob([svgString], {type: 'image/svg+xml'});
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.download = '轴类零件知识图谱.svg';
+            link.href = url;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

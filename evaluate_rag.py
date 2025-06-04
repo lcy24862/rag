@@ -1,5 +1,5 @@
-from rag_processor import load_or_generate_dataset
-from evaluator import evaluate_dataset
+from src.rag_processor import load_or_generate_dataset
+from src.evaluator import evaluate_dataset
 
 def main():
     # 加载或生成数据集（优先使用缓存）

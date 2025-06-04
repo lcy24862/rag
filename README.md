@@ -27,6 +27,7 @@ pip install -r requirements.txt
 
 4. 运行系统
 ```bash
+python initialize.py
 python main.py
 ```
 
@@ -39,8 +40,7 @@ python main.py
 ## 项目结构
 
 - data/: 存放原始教材数据
-- processed_data/: 处理后的文本数据
-- vector_store/: 向量数据库存储
+- chroma_db/: 向量数据库存储
 - src/: 源代码
 - config.py: 配置文件
 - main.py: 主程序入口
