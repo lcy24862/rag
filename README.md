@@ -1,6 +1,6 @@
 # README.md
 # 机电系统故障诊断与维修案例教程 RAG系统
-知识自动化课设作业，仅供参考
+知识自动化课设作业，仅供参考  
 这是一个基于RAG（检索增强生成）技术的机电系统故障诊断与维修案例教程问答系统。
 
 ## 功能特点
@@ -14,7 +14,7 @@
 
 1. 克隆项目
 ```bash
-git clone [项目地址]
+git clone https://github.com/lcy24862/rag/
 ```
 
 2. 安装依赖
@@ -23,9 +23,27 @@ pip install -r requirements.txt
 ```
 
 3. 准备数据
-将教材PDF文件放入 `data/textbook/` 目录
+```bash
+将教材PDF文件放入 `data/textbook/` 目录  
+```
 
-4. 运行系统
+5. 创建配置文件config.py
+```bash
+CONFIG = {
+    "data_path": "data/textbook/textbook.pdf",
+    "chunk_size": 800,
+    "chunk_overlap": 500,
+    "embedding_model": "./models/text2vec-base-chinese",
+    "base_url": "https://api.deepseek.com/v1",
+    "api_key": "your api key",
+    "vector_store": "chroma",
+    "llm_model": "deepseek-chat",
+    "temperature": 0.7,
+    "top_k": 3,
+    "vector_store_path": "./chroma_db",
+}
+```  
+5. 运行系统
 ```bash
 python initialize.py
 python main.py
